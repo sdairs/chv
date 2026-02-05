@@ -4,6 +4,16 @@ A fast ClickHouse version manager and cloud CLI.
 
 ## Installation
 
+### Quick install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sdairs/chv/main/install.sh | sh
+```
+
+This detects your OS and architecture, downloads the latest binary to `~/.local/bin/chv`, and makes it executable.
+
+### From source
+
 ```bash
 cargo install --path .
 ```
