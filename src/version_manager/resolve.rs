@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::version_manager::list::list_available_versions;
+use crate::version_manager::list::{list_available_versions, VersionEntry};
 
 /// Detects the current platform and returns (os, arch) for download URLs
 /// Returns values matching GitHub release naming: (macos|linux, aarch64|x86_64)
@@ -32,25 +32,40 @@ pub fn detect_platform() -> Result<(&'static str, &'static str)> {
     Ok((os_name, arch_name))
 }
 
-/// Resolves a version specifier to an exact version string
+/// Resolves a version specifier to an exact version and its channel
 /// Supports:
-/// - Exact: "25.1.2.3" -> "25.1.2.3"
-/// - Partial: "25.1" -> latest matching "25.1.x.x"
-/// - Channel: "stable" or "lts" -> latest from channel
-pub async fn resolve_version(version_spec: &str) -> Result<String> {
-    // If it looks like an exact version (4 parts), return as-is
-    if version_spec.split('.').count() == 4 {
-        return Ok(version_spec.to_string());
-    }
-
-    // For channels or partial versions, fetch available versions
+/// - Exact: "25.1.2.3" -> ("25.1.2.3", "stable") (assumes stable for exact versions)
+/// - Partial: "25.1" -> latest matching "25.1.x.x" with its actual channel
+/// - Channel: "stable" -> latest stable, "lts" -> latest lts
+pub async fn resolve_version(version_spec: &str) -> Result<VersionEntry> {
+    // For all specifiers, fetch available versions to get accurate channel info
     let available = list_available_versions().await?;
 
+    // If it looks like an exact version (4 parts), find its channel from the list
+    if version_spec.split('.').count() == 4 {
+        let channel = available
+            .iter()
+            .find(|e| e.version == version_spec)
+            .map(|e| e.channel.clone())
+            .unwrap_or_else(|| "stable".to_string());
+        return Ok(VersionEntry {
+            version: version_spec.to_string(),
+            channel,
+        });
+    }
+
     match version_spec {
-        "stable" | "lts" => {
-            // Return the latest version (first in the sorted list)
+        "stable" => {
             available
-                .first()
+                .iter()
+                .find(|e| e.channel == "stable")
+                .cloned()
+                .ok_or_else(|| Error::NoMatchingVersion(version_spec.to_string()))
+        }
+        "lts" => {
+            available
+                .iter()
+                .find(|e| e.channel == "lts")
                 .cloned()
                 .ok_or_else(|| Error::NoMatchingVersion(version_spec.to_string()))
         }
@@ -59,7 +74,7 @@ pub async fn resolve_version(version_spec: &str) -> Result<String> {
             let prefix = format!("{}.", partial);
             available
                 .iter()
-                .find(|v| v.starts_with(&prefix) || *v == partial)
+                .find(|e| e.version.starts_with(&prefix) || e.version == partial)
                 .cloned()
                 .ok_or_else(|| Error::NoMatchingVersion(partial.to_string()))
         }
@@ -67,12 +82,12 @@ pub async fn resolve_version(version_spec: &str) -> Result<String> {
 }
 
 /// Builds the download URL for a specific version from GitHub releases
-/// URL format: https://github.com/ClickHouse/ClickHouse/releases/download/v{version}-stable/clickhouse-{os}-{arch}
-pub fn build_download_url(version: &str) -> Result<String> {
+/// URL format: https://github.com/ClickHouse/ClickHouse/releases/download/v{version}-{channel}/clickhouse-{os}-{arch}
+pub fn build_download_url(version: &str, channel: &str) -> Result<String> {
     let (os, arch) = detect_platform()?;
     Ok(format!(
-        "https://github.com/ClickHouse/ClickHouse/releases/download/v{}-stable/clickhouse-{}-{}",
-        version, os, arch
+        "https://github.com/ClickHouse/ClickHouse/releases/download/v{}-{}/clickhouse-{}-{}",
+        version, channel, os, arch
     ))
 }
 
@@ -90,9 +105,16 @@ mod tests {
     }
 
     #[test]
-    fn test_build_download_url() {
-        let url = build_download_url("25.12.5.44").unwrap();
+    fn test_build_download_url_stable() {
+        let url = build_download_url("25.12.5.44", "stable").unwrap();
         assert!(url.starts_with("https://github.com/ClickHouse/ClickHouse/releases/download/"));
         assert!(url.contains("v25.12.5.44-stable"));
+    }
+
+    #[test]
+    fn test_build_download_url_lts() {
+        let url = build_download_url("25.8.16.34", "lts").unwrap();
+        assert!(url.starts_with("https://github.com/ClickHouse/ClickHouse/releases/download/"));
+        assert!(url.contains("v25.8.16.34-lts"));
     }
 }

@@ -4,7 +4,7 @@ use crate::version_manager::download::download_version;
 use std::os::unix::fs::PermissionsExt;
 
 /// Installs a ClickHouse version
-pub async fn install_version(version: &str) -> Result<()> {
+pub async fn install_version(version: &str, channel: &str) -> Result<()> {
     paths::ensure_dirs()?;
 
     let version_dir = paths::version_dir(version)?;
@@ -21,7 +21,7 @@ pub async fn install_version(version: &str) -> Result<()> {
     let binary_path = version_dir.join("clickhouse");
 
     println!("Downloading ClickHouse {}...", version);
-    download_version(version, &binary_path).await?;
+    download_version(version, channel, &binary_path).await?;
 
     // Make the binary executable
     let mut perms = std::fs::metadata(&binary_path)?.permissions();

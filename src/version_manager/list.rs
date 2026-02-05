@@ -34,14 +34,23 @@ struct GitHubRelease {
     tag_name: String,
 }
 
+/// A version with its release channel (stable or lts)
+#[derive(Clone)]
+pub struct VersionEntry {
+    pub version: String,
+    pub channel: String,
+}
+
 /// Fetches available versions from GitHub releases
-pub async fn list_available_versions() -> Result<Vec<String>> {
+pub async fn list_available_versions() -> Result<Vec<VersionEntry>> {
     let url = "https://api.github.com/repos/ClickHouse/ClickHouse/releases?per_page=100";
     let client = reqwest::Client::builder()
         .user_agent("ch-cli")
         .build()?;
 
-    let response = client.get(url).send().await?;
+    let response = client.get(url).send().await?.error_for_status().map_err(|e| {
+        Error::Download(format!("GitHub API request failed: {}", e))
+    })?;
     let releases: Vec<GitHubRelease> = response.json().await?;
 
     let mut versions = Vec::new();
@@ -49,17 +58,16 @@ pub async fn list_available_versions() -> Result<Vec<String>> {
         // Tag format: v25.12.5.44-stable or v24.8.10.6-lts
         let tag = &release.tag_name;
         if let Some(version) = tag.strip_prefix('v') {
-            // Remove the -stable or -lts suffix
             if let Some(v) = version.strip_suffix("-stable") {
-                versions.push(v.to_string());
+                versions.push(VersionEntry { version: v.to_string(), channel: "stable".to_string() });
             } else if let Some(v) = version.strip_suffix("-lts") {
-                versions.push(v.to_string());
+                versions.push(VersionEntry { version: v.to_string(), channel: "lts".to_string() });
             }
         }
     }
 
     // Sort versions in descending order (newest first)
-    versions.sort_by(|a, b| compare_versions(b, a));
+    versions.sort_by(|a, b| compare_versions(&b.version, &a.version));
     Ok(versions)
 }
 

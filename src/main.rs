@@ -46,10 +46,10 @@ async fn run(cmd: Commands) -> Result<()> {
 
 async fn install(version_spec: &str) -> Result<()> {
     println!("Resolving version {}...", version_spec);
-    let version = version_manager::resolve_version(version_spec).await?;
-    println!("Resolved to version {}", version);
+    let entry = version_manager::resolve_version(version_spec).await?;
+    println!("Resolved to version {} ({})", entry.version, entry.channel);
 
-    version_manager::install_version(&version).await?;
+    version_manager::install_version(&entry.version, &entry.channel).await?;
     Ok(())
 }
 
@@ -87,11 +87,11 @@ async fn list_available() -> Result<()> {
     let installed = version_manager::list_installed_versions().unwrap_or_default();
 
     println!("Available versions:");
-    for v in versions.iter().take(20) {
-        if installed.contains(v) {
-            println!("  {} (installed)", v);
+    for entry in versions.iter().take(20) {
+        if installed.contains(&entry.version) {
+            println!("  {} [{}] (installed)", entry.version, entry.channel);
         } else {
-            println!("  {}", v);
+            println!("  {} [{}]", entry.version, entry.channel);
         }
     }
 

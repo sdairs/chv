@@ -6,8 +6,8 @@ use std::path::Path;
 use tokio::io::AsyncWriteExt;
 
 /// Downloads a ClickHouse version to the specified path
-pub async fn download_version(version: &str, dest_path: &Path) -> Result<()> {
-    let url = build_download_url(version)?;
+pub async fn download_version(version: &str, channel: &str, dest_path: &Path) -> Result<()> {
+    let url = build_download_url(version, channel)?;
 
     let client = reqwest::Client::new();
     let response = client
