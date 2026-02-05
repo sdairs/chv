@@ -4,8 +4,10 @@ mod paths;
 mod version_manager;
 
 use clap::Parser;
-use cli::{Cli, Commands};
-use error::Result;
+use cli::{Cli, Commands, RunArgs, RunCommands};
+use error::{Error, Result};
+use std::os::unix::process::CommandExt;
+use std::process::Command;
 
 #[tokio::main]
 async fn main() {
@@ -32,6 +34,7 @@ async fn run(cmd: Commands) -> Result<()> {
         Commands::Use { version } => use_version(&version),
         Commands::Remove { version } => remove(&version),
         Commands::Which => which(),
+        Commands::Run(args) => run_clickhouse(args),
     }
 }
 
@@ -103,7 +106,7 @@ fn remove(version: &str) -> Result<()> {
     let version_dir = paths::version_dir(version)?;
 
     if !version_dir.exists() {
-        return Err(error::Error::VersionNotFound(version.to_string()));
+        return Err(Error::VersionNotFound(version.to_string()));
     }
 
     // Check if this is the default version
@@ -124,4 +127,50 @@ fn which() -> Result<()> {
     let binary = paths::binary_path(&version)?;
     println!("{} ({})", version, binary.display());
     Ok(())
+}
+
+fn run_clickhouse(args: RunArgs) -> Result<()> {
+    let version = version_manager::get_default_version()?;
+    let binary = paths::binary_path(&version)?;
+
+    if !binary.exists() {
+        return Err(Error::VersionNotFound(version));
+    }
+
+    // If --sql is provided, run clickhouse local with the query
+    if let Some(sql) = args.sql {
+        let mut cmd = Command::new(&binary);
+        cmd.arg("local").arg("--query").arg(&sql);
+        let err = cmd.exec();
+        return Err(Error::Exec(err.to_string()));
+    }
+
+    // Otherwise, handle subcommands
+    match args.command {
+        Some(RunCommands::Server { args }) => {
+            let mut cmd = Command::new(&binary);
+            cmd.arg("server").args(&args);
+            let err = cmd.exec();
+            Err(Error::Exec(err.to_string()))
+        }
+        Some(RunCommands::Client { args }) => {
+            let mut cmd = Command::new(&binary);
+            cmd.arg("client").args(&args);
+            let err = cmd.exec();
+            Err(Error::Exec(err.to_string()))
+        }
+        Some(RunCommands::Local { args }) => {
+            let mut cmd = Command::new(&binary);
+            cmd.arg("local").args(&args);
+            let err = cmd.exec();
+            Err(Error::Exec(err.to_string()))
+        }
+        None => {
+            eprintln!("Usage: chv run --sql <QUERY>");
+            eprintln!("       chv run server [ARGS...]");
+            eprintln!("       chv run client [ARGS...]");
+            eprintln!("       chv run local [ARGS...]");
+            std::process::exit(1);
+        }
+    }
 }

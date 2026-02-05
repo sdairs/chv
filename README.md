@@ -10,6 +10,8 @@ cargo install --path .
 
 ## Usage
 
+### Version Management
+
 ```bash
 # Install a version
 chv install stable          # Latest stable release
@@ -27,6 +29,26 @@ chv which                   # Show current default
 
 # Remove a version
 chv remove 25.12.5.44
+```
+
+### Running ClickHouse
+
+```bash
+# Quick SQL query (uses clickhouse local)
+chv run --sql "SELECT 1"
+chv run -s "SELECT * FROM system.functions LIMIT 5"
+
+# Run clickhouse local with full options
+chv run local --query "SELECT 1"
+chv run local -- --help
+
+# Run clickhouse client
+chv run client
+chv run client -- --host localhost --query "SHOW DATABASES"
+
+# Run clickhouse server
+chv run server
+chv run server -- --config-file=/path/to/config.xml
 ```
 
 ## Storage

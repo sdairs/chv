@@ -36,6 +36,9 @@ pub enum Error {
 
     #[error("No matching version found for: {0}")]
     NoMatchingVersion(String),
+
+    #[error("Failed to execute ClickHouse: {0}")]
+    Exec(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
