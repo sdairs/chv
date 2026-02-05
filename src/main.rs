@@ -1,10 +1,15 @@
 mod cli;
+mod cloud;
 mod error;
 mod paths;
 mod version_manager;
 
 use clap::Parser;
-use cli::{Cli, Commands, RunArgs, RunCommands};
+use cli::{
+    BackupCommands, CloudArgs, CloudCommands, Cli, Commands, OrgCommands, RunArgs, RunCommands,
+    ServiceCommands,
+};
+use cloud::CloudClient;
 use error::{Error, Result};
 use std::os::unix::process::CommandExt;
 use std::process::Command;
@@ -35,6 +40,7 @@ async fn run(cmd: Commands) -> Result<()> {
         Commands::Remove { version } => remove(&version),
         Commands::Which => which(),
         Commands::Run(args) => run_clickhouse(args),
+        Commands::Cloud(args) => run_cloud(args).await,
     }
 }
 
@@ -173,4 +179,102 @@ fn run_clickhouse(args: RunArgs) -> Result<()> {
             std::process::exit(1);
         }
     }
+}
+
+async fn run_cloud(args: CloudArgs) -> Result<()> {
+    let client = CloudClient::new(args.api_key.as_deref(), args.api_secret.as_deref())
+        .map_err(|e| Error::Cloud(e.to_string()))?;
+
+    let json = args.json;
+
+    let result = match args.command {
+        CloudCommands::Org { command } => match command {
+            OrgCommands::List => cloud::commands::org_list(&client, json).await,
+            OrgCommands::Get { org_id } => cloud::commands::org_get(&client, &org_id, json).await,
+        },
+        CloudCommands::Service { command } => match command {
+            ServiceCommands::List { org_id } => {
+                cloud::commands::service_list(&client, org_id.as_deref(), json).await
+            }
+            ServiceCommands::Get { service_id, org_id } => {
+                cloud::commands::service_get(&client, &service_id, org_id.as_deref(), json).await
+            }
+            ServiceCommands::Create {
+                name,
+                provider,
+                region,
+                min_replica_memory_gb,
+                max_replica_memory_gb,
+                num_replicas,
+                idle_scaling,
+                idle_timeout_minutes,
+                ip_allow,
+                backup_id,
+                release_channel,
+                data_warehouse_id,
+                readonly,
+                encryption_key,
+                encryption_role,
+                enable_tde,
+                byoc_id,
+                compliance_type,
+                profile,
+                org_id,
+            } => {
+                let opts = cloud::commands::CreateServiceOptions {
+                    name,
+                    provider,
+                    region,
+                    min_replica_memory_gb,
+                    max_replica_memory_gb,
+                    num_replicas,
+                    idle_scaling,
+                    idle_timeout_minutes,
+                    ip_allow,
+                    backup_id,
+                    release_channel,
+                    data_warehouse_id,
+                    is_readonly: readonly,
+                    encryption_key,
+                    encryption_role,
+                    enable_tde,
+                    byoc_id,
+                    compliance_type,
+                    profile,
+                    org_id,
+                };
+                cloud::commands::service_create(&client, opts, json).await
+            }
+            ServiceCommands::Delete { service_id, org_id } => {
+                cloud::commands::service_delete(&client, &service_id, org_id.as_deref()).await
+            }
+            ServiceCommands::Start { service_id, org_id } => {
+                cloud::commands::service_start(&client, &service_id, org_id.as_deref(), json).await
+            }
+            ServiceCommands::Stop { service_id, org_id } => {
+                cloud::commands::service_stop(&client, &service_id, org_id.as_deref(), json).await
+            }
+        },
+        CloudCommands::Backup { command } => match command {
+            BackupCommands::List { service_id, org_id } => {
+                cloud::commands::backup_list(&client, &service_id, org_id.as_deref(), json).await
+            }
+            BackupCommands::Get {
+                service_id,
+                backup_id,
+                org_id,
+            } => {
+                cloud::commands::backup_get(
+                    &client,
+                    &service_id,
+                    &backup_id,
+                    org_id.as_deref(),
+                    json,
+                )
+                .await
+            }
+        },
+    };
+
+    result.map_err(|e| Error::Cloud(e.to_string()))
 }

@@ -39,6 +39,9 @@ pub enum Error {
 
     #[error("Failed to execute ClickHouse: {0}")]
     Exec(String),
+
+    #[error("Cloud API error: {0}")]
+    Cloud(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
