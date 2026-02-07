@@ -64,6 +64,7 @@ ClickHouse Cloud OpenAPI spec: https://api.clickhouse.cloud/v1
 
 - **Branch per feature/issue.** When working on a new feature or issue, create a branch and use a PR workflow. Do not commit directly to `main`.
 - If the user references a GitHub issue (e.g. "work on issue 3"), use `gh issue view 3` to get the details, then create a branch like `issue-3-short-description`.
+- Update `README.md` and any relevant documentation as part of the change — PRs should include doc updates for new or changed functionality.
 - Commit to the branch, push, and create a PR with `gh pr create`.
 - Releases are done by tagging `main` (e.g. `git tag v0.1.4 && git push origin v0.1.4`), which triggers the GitHub Actions release workflow.
 
