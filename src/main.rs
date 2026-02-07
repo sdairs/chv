@@ -37,7 +37,7 @@ async fn run(cmd: Commands) -> Result<()> {
                 list_installed()
             }
         }
-        Commands::Use { version } => use_version(&version),
+        Commands::Use { version } => use_version(&version).await,
         Commands::Remove { version } => remove(&version),
         Commands::Which => which(),
         Commands::Init => {
@@ -107,7 +107,18 @@ async fn list_available() -> Result<()> {
     Ok(())
 }
 
-fn use_version(version: &str) -> Result<()> {
+async fn use_version(version_spec: &str) -> Result<()> {
+    println!("Resolving version {}...", version_spec);
+    let entry = version_manager::resolve_version(version_spec).await?;
+    let version = &entry.version;
+
+    // Install if not already installed
+    let installed = version_manager::list_installed_versions()?;
+    if !installed.contains(version) {
+        println!("Version {} not installed, installing...", version);
+        version_manager::install_version(version, &entry.channel).await?;
+    }
+
     version_manager::set_default_version(version)?;
     println!("Default version set to {}", version);
     Ok(())
