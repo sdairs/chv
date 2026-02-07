@@ -166,8 +166,8 @@ fn run_clickhouse(args: RunArgs) -> Result<()> {
             cmd.arg("server");
             cmd.args(&args);
             if !has_config {
-                init::ensure_initialized()?;
-                cmd.current_dir(init::local_dir());
+                init::ensure_initialized(&version)?;
+                cmd.current_dir(init::version_data_dir(&version));
                 cmd.args(init::server_flags());
             }
             let err = cmd.exec();

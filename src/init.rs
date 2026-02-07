@@ -26,10 +26,16 @@ pub fn init() -> Result<()> {
     Ok(())
 }
 
-pub fn ensure_initialized() -> Result<()> {
+pub fn version_data_dir(version: &str) -> PathBuf {
+    local_dir().join(version)
+}
+
+pub fn ensure_initialized(version: &str) -> Result<()> {
     if !is_initialized() {
         init()?;
     }
+    let vdir = version_data_dir(version);
+    std::fs::create_dir_all(&vdir)?;
     Ok(())
 }
 

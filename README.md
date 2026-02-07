@@ -48,9 +48,22 @@ chv remove 25.12.5.44
 chv init
 ```
 
-This creates a `.clickhouse/` directory in the current folder to contain all ClickHouse data, logs, and temporary files. A `.gitignore` is included so it won't be committed.
+This creates a `.clickhouse/` directory in the current folder with a `.gitignore` so it won't be committed.
 
 `chv run server` automatically runs `init` if needed, so you can skip this step.
+
+Data is scoped by version — each ClickHouse version gets its own subdirectory under `.clickhouse/`, so switching versions with `chv use` won't cause compatibility issues:
+
+```
+.clickhouse/
+├── .gitignore
+├── 25.12.5.44/
+│   ├── data/
+│   └── ...
+└── 26.1.2.11/
+    ├── data/
+    └── ...
+```
 
 ### Running ClickHouse
 
