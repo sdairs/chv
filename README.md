@@ -34,7 +34,10 @@ chv list                    # Installed versions
 chv list --available        # Available for download
 
 # Manage default version
-chv use 25.12.5.44          # Set default
+chv use 25.12.5.44          # Exact version
+chv use stable              # Latest stable (installs if needed)
+chv use lts                 # Latest LTS (installs if needed)
+chv use 25.12               # Latest 25.12.x.x (installs if needed)
 chv which                   # Show current default
 
 # Remove a version
