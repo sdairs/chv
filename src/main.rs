@@ -1,6 +1,7 @@
 mod cli;
 mod cloud;
 mod error;
+mod init;
 mod paths;
 mod version_manager;
 
@@ -39,6 +40,10 @@ async fn run(cmd: Commands) -> Result<()> {
         Commands::Use { version } => use_version(&version),
         Commands::Remove { version } => remove(&version),
         Commands::Which => which(),
+        Commands::Init => {
+            init::init()?;
+            Ok(())
+        }
         Commands::Run(args) => run_clickhouse(args),
         Commands::Cloud(args) => run_cloud(args).await,
     }
@@ -154,8 +159,17 @@ fn run_clickhouse(args: RunArgs) -> Result<()> {
     // Otherwise, handle subcommands
     match args.command {
         Some(RunCommands::Server { args }) => {
+            let has_config = args
+                .iter()
+                .any(|a| a.starts_with("--config-file") || a.starts_with("-C"));
             let mut cmd = Command::new(&binary);
-            cmd.arg("server").args(&args);
+            cmd.arg("server");
+            cmd.args(&args);
+            if !has_config {
+                init::ensure_initialized()?;
+                cmd.current_dir(init::local_dir());
+                cmd.args(init::server_flags());
+            }
             let err = cmd.exec();
             Err(Error::Exec(err.to_string()))
         }

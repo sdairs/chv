@@ -39,6 +39,9 @@ pub enum Commands {
     /// Show the current default version
     Which,
 
+    /// Initialize a project-local ClickHouse configuration
+    Init,
+
     /// Run ClickHouse commands
     Run(RunArgs),
 

@@ -41,6 +41,17 @@ chv which                   # Show current default
 chv remove 25.12.5.44
 ```
 
+### Project Initialization
+
+```bash
+# Initialize a project-local ClickHouse data directory
+chv init
+```
+
+This creates a `.clickhouse/` directory in the current folder to contain all ClickHouse data, logs, and temporary files. A `.gitignore` is included so it won't be committed.
+
+`chv run server` automatically runs `init` if needed, so you can skip this step.
+
 ### Running ClickHouse
 
 ```bash
@@ -56,7 +67,7 @@ chv run local -- --help
 chv run client
 chv run client -- --host localhost --query "SHOW DATABASES"
 
-# Run clickhouse server
+# Run clickhouse server (auto-initializes .clickhouse/ in CWD)
 chv run server
 chv run server -- --config-file=/path/to/config.xml
 ```
