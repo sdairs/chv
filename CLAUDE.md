@@ -1,0 +1,76 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Build & Test
+
+```bash
+cargo build                          # dev build
+cargo build --release                # release build
+cargo test                           # run all tests
+cargo test test_detect_platform      # run a single test
+cargo clippy                         # lint
+```
+
+No separate lint CI — just `cargo build` and `cargo test` must pass.
+
+Cross-compilation for aarch64-linux uses `cross` (see `.github/workflows/release.yml`). The crate uses `rustls-tls` instead of OpenSSL to support this.
+
+## Architecture
+
+`chv` is a ClickHouse version manager + cloud CLI. Three concerns, three module groups:
+
+1. **Version management** (top-level commands: `install`, `list`, `use`, `remove`, `which`) — handled by `src/version_manager/`. Binaries live in `~/.clickhouse/versions/{version}/clickhouse`, default tracked in `~/.clickhouse/default`.
+
+2. **Local server** (`run server`, `run client`, `run local`, `run --sql`) — handled in `run_clickhouse()` in `main.rs`. Uses `std::os::unix::process::CommandExt::exec()` to replace the process with ClickHouse. Project data lives in `.clickhouse/{version}/` (version-scoped to prevent compatibility issues).
+
+3. **Cloud API** (`cloud org|service|backup`) — handled by `src/cloud/`. `CloudClient` wraps reqwest with Basic auth. Commands go through `cloud/commands.rs`, types in `cloud/types.rs`. All cloud commands support `--json` output.
+
+## Adding commands
+
+### New top-level or run subcommand
+
+1. Define in `src/cli.rs` using clap derive macros
+2. Add match arm in `src/main.rs`
+3. Implement handler (in `main.rs` for simple commands, or a dedicated module)
+
+### New cloud subcommand
+
+1. Add variant to the relevant enum in `src/cli.rs` (e.g. `ServiceCommands`)
+2. Add match arm in `run_cloud()` in `src/main.rs`
+3. Add method to `CloudClient` in `cloud/client.rs`
+4. Add request/response types to `cloud/types.rs` — use `#[serde(rename_all = "camelCase")]` (API uses camelCase) and `#[serde(skip_serializing_if = "Option::is_none")]` for optional fields
+5. Implement handler in `cloud/commands.rs` with the `--json` output pattern:
+   ```rust
+   if json {
+       println!("{}", serde_json::to_string_pretty(&data)?);
+   } else {
+       println!("Human readable: {}", data.field);
+   }
+   ```
+
+ClickHouse Cloud OpenAPI spec: https://api.clickhouse.cloud/v1
+
+## Key details
+
+- CLI is defined with clap derive macros in `src/cli.rs`, dispatched in `src/main.rs`
+- `src/paths.rs` handles `~/.clickhouse/` paths (global install dir); `src/init.rs` handles `.clickhouse/` paths (project-local data dir)
+- `run server` uses `exec()` (process replacement), so code after `cmd.exec()` only runs on failure
+- Error types use `thiserror` in `src/error.rs`; cloud module has its own error type wrapped as `Error::Cloud(String)`
+- Version resolution (`version_manager/resolve.rs`) handles specs like `stable`, `lts`, `25.12`, or exact `25.12.5.44` — all resolve to an exact version + channel via GitHub API
+- Releases are triggered by pushing a version tag (`v0.1.3`), which runs the GitHub Actions workflow
+
+## Git workflow
+
+- **Branch per feature/issue.** When working on a new feature or issue, create a branch and use a PR workflow. Do not commit directly to `main`.
+- If the user references a GitHub issue (e.g. "work on issue 3"), use `gh issue view 3` to get the details, then create a branch like `issue-3-short-description`.
+- Commit to the branch, push, and create a PR with `gh pr create`.
+- Releases are done by tagging `main` (e.g. `git tag v0.1.4 && git push origin v0.1.4`), which triggers the GitHub Actions release workflow.
+
+## Testing locally
+
+```bash
+cargo run -- install stable
+cargo run -- run server              # starts server in .clickhouse/{version}/
+cargo run -- run client --query "SELECT 1"
+```
