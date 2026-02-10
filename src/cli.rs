@@ -4,6 +4,21 @@ use clap::{Args, Parser, Subcommand};
 #[command(name = "chv")]
 #[command(about = "ClickHouse version manager", long_about = None)]
 #[command(version)]
+#[command(after_help = "\
+CONTEXT FOR AGENTS:
+  chv is a CLI to work with local ClickHouse and ClickHouse Cloud.
+
+  Two main workflows:
+  1. Local: Install and interact with versions of ClickHouse to develop locally.
+  2. Cloud: Manage ClickHouse Cloud infrastructure and push local work to cloud.
+
+  You can install the ClickHouse Agent Skills for best practices on using ClikHouse:
+
+  `npx skills add clickhouse/agent-skills`
+
+  Typical local workflow: `chv install stable && chv use stable && chv run server`.
+
+  Use `chv <command> --help` to get more context for specific commands.")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -12,12 +27,25 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Install a ClickHouse version
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Downloads a ClickHouse binary to ~/.clickhouse/versions/{version}/.
+  Accepts version specs: \"stable\", \"lts\", partial like \"25.12\", or exact like \"25.12.5.44\".
+  Optionally set as default with `chv use <version>`.
+  `chv use <version>` will auto-install if the version is missing and set as default.
+  Related: `chv list --available` to see downloadable versions.")]
     Install {
         /// Version to install (e.g., 25.1.2.3, 25.1, stable, lts)
         version: String,
     },
 
     /// List installed versions
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Without flags: shows locally installed versions (exact version strings).
+  With --available: shows versions available for download from GitHub releases.
+  Use the exact version strings from this output with `chv remove` or `chv use`.
+  Related: `chv install <version>` to install, `chv which` to see current default.")]
     List {
         /// List versions available for download
         #[arg(long)]
@@ -25,27 +53,65 @@ pub enum Commands {
     },
 
     /// Set the default version
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Sets the default ClickHouse version used by `chv run` commands.
+  Accepts version specs: \"stable\", \"lts\", partial like \"25.12\", or exact like \"25.12.5.44\".
+  Auto-installs the version if not already present.
+  Related: `chv which` to verify, `chv run server` to start.")]
     Use {
         /// Version to use as default
         version: String,
     },
 
     /// Remove an installed version
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Removes an installed ClickHouse version from ~/.clickhouse/versions/.
+  Takes an exact version string as shown by `chv list` (e.g., \"25.12.5.44\").
+  Does NOT accept keywords like \"stable\" — use the exact version number.
+  Related: `chv list` to see installed versions.")]
     Remove {
         /// Version to remove
         version: String,
     },
 
     /// Show the current default version
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Shows the current default version and binary path. No arguments needed.
+  Use this to verify which version is active before running commands.
+  Related: `chv use <version>` to change the default.")]
     Which,
 
     /// Initialize a project-local ClickHouse configuration
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Creates a .clickhouse/ directory in the current working directory.
+  Auto-called by `chv run server`, so rarely needed manually.
+  Project data is scoped by version in .clickhouse/{version}/.
+  Related: `chv run server` to start a server with project-local data.")]
     Init,
 
     /// Run ClickHouse commands
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Used for interacting with ClickHouse (local and Cloud).
+  Gateway to server/client/local subcommands. Requires a default version set via `chv use`.
+  Shortcut: `chv run --sql 'SELECT 1'` runs a query via clickhouse-local without subcommands to test things that don't need persistence.
+  Pass extra ClickHouse args after -- (e.g., `chv run server -- --http_port=9000`).
+  Related: `chv use <version>` to set default, `chv which` to check current version.")]
     Run(RunArgs),
 
     /// ClickHouse Cloud API commands
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Used for managing ClickHouse Cloud infrastructure.
+  Gateway to org/service/backup subcommands for ClickHouse Cloud.
+  Requires credentials via env vars CLICKHOUSE_CLOUD_API_KEY + CLICKHOUSE_CLOUD_API_SECRET, or via --api-key and --api-secret flags. Verify auth with `chv cloud org list`.
+  Add --json to any cloud command for machine-readable output.
+  Typical workflow: `cloud org list` → get org ID → `cloud service list` → manage services.
+  Related: `chv cloud org list` to start.")]
     Cloud(CloudArgs),
 }
 
@@ -62,6 +128,13 @@ pub struct RunArgs {
 #[derive(Subcommand)]
 pub enum RunCommands {
     /// Run clickhouse-server
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Starts clickhouse-server with project-local data in .clickhouse/{version}/.
+  Auto-initializes the data directory on first run. Replaces the current process (exec).
+  Pass extra clickhouse-server args after -- (e.g., `chv run server -- --http_port=9000`).
+  Data persists in .clickhouse/{version}/ between runs.
+  Related: `chv run client` to connect, `chv use <version>` to change version.")]
     Server {
         /// Arguments to pass to clickhouse-server
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -69,6 +142,12 @@ pub enum RunCommands {
     },
 
     /// Run clickhouse-client
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Connects to a running clickhouse-server. Server must already be running via `chv run server`.
+  Pass clickhouse-client args after -- (e.g., `chv run client -- --query 'SELECT 1'`).
+  Common args: --host, --port, --query, --multiquery, --format.
+  Related: `chv run server` to start a server first.")]
     Client {
         /// Arguments to pass to clickhouse-client
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -76,6 +155,13 @@ pub enum RunCommands {
     },
 
     /// Run clickhouse-local
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Runs clickhouse-local for file/query processing without a server.
+  Pass clickhouse-local args after -- (e.g., `chv run local -- --query 'SELECT 1'`).
+  Shortcut: `chv run --sql 'SELECT 1'` does the same without the local subcommand.
+  Useful for processing files, running queries against local data, or testing SQL.
+  Related: `chv run --sql` for quick one-off queries.")]
     Local {
         /// Arguments to pass to clickhouse-local
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -104,18 +190,37 @@ pub struct CloudArgs {
 #[derive(Subcommand)]
 pub enum CloudCommands {
     /// Organization commands
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Manage ClickHouse Cloud organizations. Subcommands: list, get.
+  Org IDs are needed for most service and backup operations.
+  Start with `chv cloud org list` to discover available org IDs.
+  Related: `chv cloud service list` (uses org ID).")]
     Org {
         #[command(subcommand)]
         command: OrgCommands,
     },
 
     /// Service commands
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Manage ClickHouse Cloud services. Subcommands: list, get, create, delete, start, stop.
+  Most commands need a service ID — get it from `chv cloud service list`.
+  Org ID is auto-detected if you have only one org; otherwise pass --org-id.
+  Add --json for machine-readable output. All write operations are immediate.
+  Related: `chv cloud org list` for org IDs, `chv cloud backup list` for service backups.")]
     Service {
         #[command(subcommand)]
         command: ServiceCommands,
     },
 
     /// Backup commands
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Manage ClickHouse Cloud backups. Subcommands: list, get.
+  Requires a service ID — get it from `chv cloud service list`.
+  Backup IDs from `backup list` can be used with `service create --backup-id` to restore.
+  Related: `chv cloud service list` for service IDs.")]
     Backup {
         #[command(subcommand)]
         command: BackupCommands,
@@ -125,9 +230,21 @@ pub enum CloudCommands {
 #[derive(Subcommand)]
 pub enum OrgCommands {
     /// List organizations
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Returns all organizations accessible with the current API credentials.
+  Use this to find org IDs needed by service and backup commands.
+  Add --json for machine-readable output.
+  Related: `chv cloud service list` next.")]
     List,
 
     /// Get organization details
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Returns details for a single organization by ID.
+  Get org IDs from `chv cloud org list`.
+  Add --json for machine-readable output.
+  Related: `chv cloud org list` to find org IDs.")]
     Get {
         /// Organization ID
         org_id: String,
@@ -137,6 +254,12 @@ pub enum OrgCommands {
 #[derive(Subcommand)]
 pub enum ServiceCommands {
     /// List all services
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Lists all services in the organization. Org ID is auto-detected if only one org exists.
+  Returns service IDs needed by get, delete, start, stop, and backup commands.
+  Add --json for machine-readable output.
+  Related: `chv cloud service get <id>` for full details.")]
     List {
         /// Organization ID (auto-detected if not specified)
         #[arg(long)]
@@ -144,6 +267,12 @@ pub enum ServiceCommands {
     },
 
     /// Get service details
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Returns full service details: status, endpoints, scaling config, IP access list.
+  Get the service ID from `chv cloud service list`.
+  Add --json for machine-readable output.
+  Related: `chv cloud service start/stop <id>` to change state.")]
     Get {
         /// Service ID
         service_id: String,
@@ -154,6 +283,13 @@ pub enum ServiceCommands {
     },
 
     /// Create a new service
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Creates a new ClickHouse Cloud service. Only --name is required; other fields have defaults.
+  Returns the new service ID and initial password — save these.
+  Typical: `chv cloud service create --name my-svc`.
+  Defaults: provider=aws, region=us-east-1. Add --json for machine-readable output.
+  Related: `chv cloud service get <id>` to check status after creation.")]
     Create {
         /// Service name (required)
         #[arg(long)]
@@ -237,6 +373,12 @@ pub enum ServiceCommands {
     },
 
     /// Delete a service
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Permanently deletes a ClickHouse Cloud service. This action is irreversible.
+  Takes a service ID — get it from `chv cloud service list`.
+  Add --json for machine-readable output.
+  Related: `chv cloud service stop <id>` to idle instead of delete.")]
     Delete {
         /// Service ID
         service_id: String,
@@ -247,6 +389,12 @@ pub enum ServiceCommands {
     },
 
     /// Start a service
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Resumes a stopped/idled ClickHouse Cloud service.
+  Takes a service ID — get it from `chv cloud service list`.
+  Add --json for machine-readable output.
+  Related: `chv cloud service get <id>` to check status, `chv cloud service stop <id>` to idle.")]
     Start {
         /// Service ID
         service_id: String,
@@ -257,6 +405,12 @@ pub enum ServiceCommands {
     },
 
     /// Stop a service
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Idles a ClickHouse Cloud service, stopping billing for compute.
+  Data is preserved. Takes a service ID — get it from `chv cloud service list`.
+  Add --json for machine-readable output.
+  Related: `chv cloud service start <id>` to resume, `chv cloud service delete <id>` to remove.")]
     Stop {
         /// Service ID
         service_id: String,
@@ -270,6 +424,12 @@ pub enum ServiceCommands {
 #[derive(Subcommand)]
 pub enum BackupCommands {
     /// List backups for a service
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Lists all backups for a given service. Requires a service ID from `chv cloud service list`.
+  Returns backup IDs that can be used with `chv cloud service create --backup-id` to restore.
+  Add --json for machine-readable output.
+  Related: `chv cloud backup get` for details on a specific backup.")]
     List {
         /// Service ID
         service_id: String,
@@ -280,6 +440,12 @@ pub enum BackupCommands {
     },
 
     /// Get backup details
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Returns details for a specific backup. Requires service ID and backup ID.
+  Get service IDs from `chv cloud service list`, backup IDs from `chv cloud backup list`.
+  Add --json for machine-readable output.
+  Related: `chv cloud service create --backup-id <id>` to restore from this backup.")]
     Get {
         /// Service ID
         service_id: String,
