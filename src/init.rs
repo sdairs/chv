@@ -7,6 +7,12 @@ pub fn local_dir() -> PathBuf {
         .join(".clickhouse")
 }
 
+pub fn project_dir() -> PathBuf {
+    std::env::current_dir()
+        .expect("failed to get current directory")
+        .join("clickhouse")
+}
+
 pub fn is_initialized() -> bool {
     local_dir().exists()
 }
@@ -16,13 +22,38 @@ pub fn init() -> Result<()> {
 
     if is_initialized() {
         println!("Already initialized at {}", dir.display());
-        return Ok(());
+    } else {
+        std::fs::create_dir_all(&dir)?;
+        std::fs::write(dir.join(".gitignore"), "*\n")?;
+        println!("Initialized ClickHouse project in {}", dir.display());
     }
 
-    std::fs::create_dir_all(&dir)?;
-    std::fs::write(dir.join(".gitignore"), "*\n")?;
+    create_project_scaffold()?;
 
-    println!("Initialized ClickHouse project in {}", dir.display());
+    Ok(())
+}
+
+fn create_project_scaffold() -> Result<()> {
+    let dir = project_dir();
+    let subdirs = ["tables", "materialized_views", "queries", "seed"];
+
+    let mut created = false;
+    for subdir in &subdirs {
+        let path = dir.join(subdir);
+        if !path.exists() {
+            std::fs::create_dir_all(&path)?;
+            std::fs::write(path.join(".gitkeep"), "")?;
+            created = true;
+        }
+    }
+
+    if created {
+        println!(
+            "Created project scaffold in {}/ (tables, materialized_views, queries, seed)",
+            dir.display()
+        );
+    }
+
     Ok(())
 }
 
@@ -31,8 +62,10 @@ pub fn version_data_dir(version: &str) -> PathBuf {
 }
 
 pub fn ensure_initialized(version: &str) -> Result<()> {
-    if !is_initialized() {
-        init()?;
+    let dir = local_dir();
+    if !dir.exists() {
+        std::fs::create_dir_all(&dir)?;
+        std::fs::write(dir.join(".gitignore"), "*\n")?;
     }
     let vdir = version_data_dir(version);
     std::fs::create_dir_all(&vdir)?;
