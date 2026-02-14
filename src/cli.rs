@@ -108,7 +108,9 @@ CONTEXT FOR AGENTS:
 CONTEXT FOR AGENTS:
   Used for managing ClickHouse Cloud infrastructure.
   Gateway to org/service/backup subcommands for ClickHouse Cloud.
-  Requires credentials via env vars CLICKHOUSE_CLOUD_API_KEY + CLICKHOUSE_CLOUD_API_SECRET, or via --api-key and --api-secret flags. Verify auth with `chv cloud org list`.
+  Auth: `chv cloud auth` to save credentials interactively (stored in .clickhouse/credentials.json).
+  Or use env vars CLICKHOUSE_CLOUD_API_KEY + CLICKHOUSE_CLOUD_API_SECRET, or --api-key/--api-secret flags.
+  Verify auth with `chv cloud org list`.
   Add --json to any cloud command for machine-readable output.
   Typical workflow: `cloud org list` → get org ID → `cloud service list` → manage services.
   Related: `chv cloud org list` to start.")]
@@ -213,6 +215,15 @@ CONTEXT FOR AGENTS:
         #[command(subcommand)]
         command: ServiceCommands,
     },
+
+    /// Save API credentials interactively
+    #[command(after_help = "\
+CONTEXT FOR AGENTS:
+  Prompts for API key and secret, saves to .clickhouse/credentials.json (project-local).
+  Credentials are auto-loaded by subsequent cloud commands.
+  Fallback order: --api-key/--api-secret flags > credentials file > env vars.
+  Related: `chv cloud org list` to verify credentials work.")]
+    Auth,
 
     /// Backup commands
     #[command(after_help = "\

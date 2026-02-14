@@ -27,18 +27,22 @@ pub struct CloudClient {
 
 impl CloudClient {
     pub fn new(api_key: Option<&str>, api_secret: Option<&str>) -> Result<Self> {
+        let file_creds = crate::cloud::credentials::load_credentials();
+
         let key = api_key
             .map(String::from)
+            .or_else(|| file_creds.as_ref().map(|c| c.api_key.clone()))
             .or_else(|| env::var("CLICKHOUSE_CLOUD_API_KEY").ok())
             .ok_or_else(|| CloudError {
-                message: "API key required. Set CLICKHOUSE_CLOUD_API_KEY or use --api-key".into(),
+                message: "API key required. Run `chv cloud auth`, set CLICKHOUSE_CLOUD_API_KEY, or use --api-key".into(),
             })?;
 
         let secret = api_secret
             .map(String::from)
+            .or_else(|| file_creds.as_ref().map(|c| c.api_secret.clone()))
             .or_else(|| env::var("CLICKHOUSE_CLOUD_API_SECRET").ok())
             .ok_or_else(|| CloudError {
-                message: "API secret required. Set CLICKHOUSE_CLOUD_API_SECRET or use --api-secret"
+                message: "API secret required. Run `chv cloud auth`, set CLICKHOUSE_CLOUD_API_SECRET, or use --api-secret"
                     .into(),
             })?;
 

@@ -1,5 +1,7 @@
 use crate::cloud::client::CloudClient;
+use crate::cloud::credentials::{self, Credentials};
 use crate::cloud::types::*;
+use std::io::Write;
 
 pub async fn org_list(client: &CloudClient, json: bool) -> Result<(), Box<dyn std::error::Error>> {
     let orgs = client.list_organizations().await?;
@@ -353,6 +355,38 @@ pub async fn backup_get(
             println!("  Size: {}", format_bytes(size));
         }
     }
+    Ok(())
+}
+
+pub fn auth_interactive() -> Result<(), Box<dyn std::error::Error>> {
+    print!("API Key: ");
+    std::io::stdout().flush()?;
+    let mut api_key = String::new();
+    std::io::stdin().read_line(&mut api_key)?;
+    let api_key = api_key.trim().to_string();
+
+    if api_key.is_empty() {
+        return Err("API key cannot be empty".into());
+    }
+
+    print!("API Secret: ");
+    std::io::stdout().flush()?;
+    let api_secret = rpassword::read_password()?;
+
+    if api_secret.is_empty() {
+        return Err("API secret cannot be empty".into());
+    }
+
+    let creds = Credentials {
+        api_key,
+        api_secret,
+    };
+    credentials::save_credentials(&creds)?;
+
+    println!(
+        "Credentials saved to {}",
+        credentials::credentials_path().display()
+    );
     Ok(())
 }
 
