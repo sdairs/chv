@@ -207,6 +207,10 @@ fn run_clickhouse(args: RunArgs) -> Result<()> {
 }
 
 async fn run_cloud(args: CloudArgs) -> Result<()> {
+    if let CloudCommands::Auth = &args.command {
+        return cloud::commands::auth_interactive().map_err(|e| Error::Cloud(e.to_string()));
+    }
+
     let client = CloudClient::new(args.api_key.as_deref(), args.api_secret.as_deref())
         .map_err(|e| Error::Cloud(e.to_string()))?;
 
@@ -280,6 +284,7 @@ async fn run_cloud(args: CloudArgs) -> Result<()> {
                 cloud::commands::service_stop(&client, &service_id, org_id.as_deref(), json).await
             }
         },
+        CloudCommands::Auth => unreachable!("handled above"),
         CloudCommands::Backup { command } => match command {
             BackupCommands::List { service_id, org_id } => {
                 cloud::commands::backup_list(&client, &service_id, org_id.as_deref(), json).await

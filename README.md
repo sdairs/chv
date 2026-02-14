@@ -94,16 +94,25 @@ Manage ClickHouse Cloud services via the API.
 
 #### Authentication
 
-Set environment variables:
+The easiest way to authenticate is interactively:
+```bash
+chv cloud auth
+```
+
+This prompts for your API key and secret, and saves them to `.clickhouse/credentials.json` (project-local, git-ignored).
+
+You can also use environment variables:
 ```bash
 export CLICKHOUSE_CLOUD_API_KEY=your-key
 export CLICKHOUSE_CLOUD_API_SECRET=your-secret
 ```
 
-Or pass via flags:
+Or pass credentials directly via flags:
 ```bash
 chv cloud --api-key KEY --api-secret SECRET ...
 ```
+
+Credential resolution order: CLI flags > `.clickhouse/credentials.json` > environment variables.
 
 #### Organizations
 

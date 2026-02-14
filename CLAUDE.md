@@ -51,6 +51,15 @@ Cross-compilation for aarch64-linux uses `cross` (see `.github/workflows/release
 
 ClickHouse Cloud OpenAPI spec: https://api.clickhouse.cloud/v1
 
+## Dependencies
+
+Use `cargo add` to add new dependencies (not manual `Cargo.toml` edits). Always use the latest version of packages.
+
+```bash
+cargo add serde --features derive    # add with features
+cargo add rpassword                  # add latest version
+```
+
 ## Key details
 
 - CLI is defined with clap derive macros in `src/cli.rs`, dispatched in `src/main.rs`
