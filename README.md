@@ -47,26 +47,29 @@ chv remove 25.12.5.44
 ### Project Initialization
 
 ```bash
-# Initialize a project-local ClickHouse data directory
+# Initialize a project-local ClickHouse data directory and project scaffold
 chv init
 ```
 
-This creates a `.clickhouse/` directory in the current folder with a `.gitignore` so it won't be committed.
+This creates two directories:
 
-`chv run server` automatically runs `init` if needed, so you can skip this step.
+1. **`.clickhouse/`** — Runtime data directory (git-ignored). Data is scoped by version so switching versions with `chv use` won't cause compatibility issues. `chv run server` automatically creates this if needed.
 
-Data is scoped by version — each ClickHouse version gets its own subdirectory under `.clickhouse/`, so switching versions with `chv use` won't cause compatibility issues:
+2. **`clickhouse/`** — Project scaffold for organizing your SQL files (meant to be committed):
 
 ```
-.clickhouse/
-├── .gitignore
-├── 25.12.5.44/
-│   ├── data/
-│   └── ...
-└── 26.1.2.11/
-    ├── data/
-    └── ...
+clickhouse/
+├── tables/         # Table definitions (CREATE TABLE ...)
+│   └── .gitkeep
+├── materialized_views/  # Materialized view definitions
+│   └── .gitkeep
+├── queries/        # Saved queries
+│   └── .gitkeep
+└── seed/           # Seed data / INSERT statements
+    └── .gitkeep
 ```
+
+The `clickhouse/` scaffold is only created by `chv init`, not by `chv run server`.
 
 ### Running ClickHouse
 

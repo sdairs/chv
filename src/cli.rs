@@ -87,9 +87,9 @@ CONTEXT FOR AGENTS:
     /// Initialize a project-local ClickHouse configuration
     #[command(after_help = "\
 CONTEXT FOR AGENTS:
-  Creates a .clickhouse/ directory in the current working directory.
-  Auto-called by `chv run server`, so rarely needed manually.
-  Project data is scoped by version in .clickhouse/{version}/.
+  Creates a .clickhouse/ directory (runtime data, git-ignored) and a clickhouse/ project
+  scaffold with subdirs: tables/, materialized_views/, queries/, seed/ (each with .gitkeep).
+  The clickhouse/ directory is meant to be committed — organize your SQL files there.
   Related: `chv run server` to start a server with project-local data.")]
     Init,
 
