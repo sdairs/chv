@@ -30,8 +30,8 @@ async fn main() {
 async fn run(cmd: Commands) -> Result<()> {
     match cmd {
         Commands::Install { version } => install(&version).await,
-        Commands::List { available } => {
-            if available {
+        Commands::List { remote } => {
+            if remote {
                 list_available().await
             } else {
                 list_installed()
