@@ -33,7 +33,7 @@ CONTEXT FOR AGENTS:
   Accepts version specs: \"stable\", \"lts\", partial like \"25.12\", or exact like \"25.12.5.44\".
   Optionally set as default with `chv use <version>`.
   `chv use <version>` will auto-install if the version is missing and set as default.
-  Related: `chv list --available` to see downloadable versions.")]
+  Related: `chv list --remote` to see downloadable versions.")]
     Install {
         /// Version to install (e.g., 25.1.2.3, 25.1, stable, lts)
         version: String,
@@ -43,13 +43,13 @@ CONTEXT FOR AGENTS:
     #[command(after_help = "\
 CONTEXT FOR AGENTS:
   Without flags: shows locally installed versions (exact version strings).
-  With --available: shows versions available for download from GitHub releases.
+  With --remote: shows versions available for download from GitHub releases.
   Use the exact version strings from this output with `chv remove` or `chv use`.
   Related: `chv install <version>` to install, `chv which` to see current default.")]
     List {
         /// List versions available for download
         #[arg(long)]
-        available: bool,
+        remote: bool,
     },
 
     /// Set the default version

@@ -31,7 +31,7 @@ chv install 25.12.5.44      # Exact version
 
 # List versions
 chv list                    # Installed versions
-chv list --available        # Available for download
+chv list --remote           # Available for download
 
 # Manage default version
 chv use 25.12.5.44          # Exact version
